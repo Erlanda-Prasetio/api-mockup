@@ -9,47 +9,37 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { FileText, AlertTriangle, Shield, Search } from "lucide-react"
+import { toast } from "sonner"
 
 export default function HomePage() {
   const [stats, setStats] = useState({
     korupsi: 0,
     gratifikasi: 0,
-    benturaanKepentingan: 0,
+    'benturan-kepentingan': 0,
   })
 
   const [trackingNumber, setTrackingNumber] = useState("")
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
 
-  // Simulate API call for statistics
+  // Fetch real statistics from API
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // TODO: Replace with real API when keys are available
-        // const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${process.env.STATS_API_ENDPOINT}`, {
-        //   headers: {
-        //     'Authorization': `Bearer ${process.env.STATS_API_KEY}`
-        //   }
-        // })
-        // const data = await response.json()
+        setIsLoadingStats(true)
+        const response = await fetch('/api/stats')
+        const data = await response.json()
 
-        // Simulate API delay with placeholder data
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        // Mock data - replace with real API response when available
-        const mockStats = {
-          korupsi: 0, // Keep as 0
-          gratifikasi: 0, // Keep as 0
-          benturaanKepentingan: 0, // Keep as 0
+        if (data.success) {
+          setStats(data.data.stats)
+        } else {
+          console.error('Failed to fetch stats:', data.message)
+          // Keep default zero values
         }
-
-        setStats(mockStats)
       } catch (error) {
         console.error("Error fetching stats:", error)
-        // Fallback to zero values
-        setStats({
-          korupsi: 0,
-          gratifikasi: 0,
-          benturaanKepentingan: 0,
-        })
+        // Keep default zero values
+      } finally {
+        setIsLoadingStats(false)
       }
     }
 
@@ -59,43 +49,53 @@ export default function HomePage() {
   const handleTrackComplaint = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!trackingNumber.trim()) {
-      alert("Masukkan nomor tiket pengaduan")
+      toast.error("Masukkan nomor tiket pengaduan")
       return
     }
 
     try {
-      // TODO: Replace with real API when keys are available
-      // const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${process.env.TRACKING_API_ENDPOINT}/${trackingNumber}`, {
-      //   headers: {
-      //     'Authorization': `Bearer ${process.env.TRACKING_API_KEY}`
-      //   }
-      // })
-      // const data = await response.json()
+      // Call the real search API
+      const response = await fetch(`/api/search?kode_aduan=${encodeURIComponent(trackingNumber.trim())}`)
+      const data = await response.json()
 
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock response - replace with real API response when available
-      const mockStatuses = [
-        "Laporan diterima dan sedang diverifikasi",
-        "Laporan sedang dalam proses investigasi",
-        "Laporan telah selesai diproses",
-        "Laporan tidak ditemukan",
-      ]
-
-      const randomStatus = mockStatuses[Math.floor(Math.random() * mockStatuses.length)]
-
-      if (randomStatus === "Laporan tidak ditemukan") {
-        alert(`Tiket ${trackingNumber} tidak ditemukan. Pastikan nomor tiket sudah benar.`)
+      if (response.ok && data.length > 0) {
+        const report = data[0]
+        const statusMessages = {
+          1: "Aduan Sedang di proses",
+          2: "Aduan telah Selesai diproses",
+          3: "Aduan Ditunda sementara",
+        }
+        
+        const statusMessage = statusMessages[report.status_pengaduan_id as keyof typeof statusMessages] || "Status tidak diketahui"
+        toast.success(`Status Tiket ${trackingNumber}`, {
+          description: statusMessage,
+          action: {
+            label: "OK",
+            onClick: () => console.log("Status checked"),
+          },
+          duration: 8000,
+        })
+      } else if (response.status === 404) {
+        toast.error(`Tiket ${trackingNumber} tidak ditemukan`, {
+          description: "Nomor tiket aduan tidak ditemukan.",
+        })
+      } else if (response.status === 422) {
+        toast.error("Format nomor tiket tidak valid", {
+          description: "Pastikan format nomor tiket sudah benar.",
+        })
       } else {
-        alert(`Status tiket ${trackingNumber}: ${randomStatus}`)
+        toast.error("Terjadi kesalahan saat mencari tiket", {
+          description: "Silakan coba lagi.",
+        })
       }
 
       // Reset form
       setTrackingNumber("")
     } catch (error) {
       console.error("Error tracking complaint:", error)
-      alert("Terjadi kesalahan saat melacak pengaduan. Silakan coba lagi.")
+      toast.error("Terjadi kesalahan saat melacak pengaduan", {
+        description: "Silakan coba lagi.",
+      })
     }
   }
 
@@ -124,7 +124,7 @@ export default function HomePage() {
         "Laporkan situasi dimana kepentingan pribadi bertentangan dengan kepentingan publik dalam pengambilan keputusan.",
       icon: Shield,
       color: "bg-yellow-500",
-      count: stats.benturaanKepentingan,
+      count: stats['benturan-kepentingan'],
       image: "/images/benturan-kepentingan.jpg",
     },
   ]
@@ -139,9 +139,9 @@ export default function HomePage() {
               <Image
                 src="/images/ptsp-logo.png"
                 alt="PTSP Jateng Logo"
-                width={240}
-                height={120}
-                className="h-20 w-auto"
+                width={300}
+                height={150}
+                className="h-28 w-auto"
               />
             </Link>
 
@@ -259,18 +259,20 @@ export default function HomePage() {
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <div className="bg-white rounded-lg p-6 text-center shadow-md">
-              <div className="text-3xl md:text-4xl font-bold mb-2 text-teal-600">{stats.korupsi.toLocaleString()}</div>
+              <div className="text-3xl md:text-4xl font-bold mb-2 text-teal-600">
+                {isLoadingStats ? '...' : stats.korupsi.toLocaleString()}
+              </div>
               <div className="text-gray-600">Laporan Korupsi</div>
             </div>
             <div className="bg-white rounded-lg p-6 text-center shadow-md">
               <div className="text-3xl md:text-4xl font-bold mb-2 text-teal-600">
-                {stats.gratifikasi.toLocaleString()}
+                {isLoadingStats ? '...' : stats.gratifikasi.toLocaleString()}
               </div>
               <div className="text-gray-600">Laporan Gratifikasi</div>
             </div>
             <div className="bg-white rounded-lg p-6 text-center shadow-md">
               <div className="text-3xl md:text-4xl font-bold mb-2 text-teal-600">
-                {stats.benturaanKepentingan.toLocaleString()}
+                {isLoadingStats ? '...' : stats['benturan-kepentingan'].toLocaleString()}
               </div>
               <div className="text-gray-600">Benturan Kepentingan</div>
             </div>
@@ -318,23 +320,23 @@ export default function HomePage() {
               <Image
                 src="/images/ptsp-logo.png"
                 alt="PTSP Jateng Logo"
-                width={200}
-                height={100}
-                className="h-20 w-auto"
+                width={360}
+                height={180}
+                className="h-28 w-auto"
               />
             </div>
 
             <nav className="flex flex-wrap items-center gap-8">
-              <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
+              <Link href="#" className="text-gray-300 hover:text-white transition-colors">
                 About
               </Link>
-              <Link href="/privacy-policy" className="text-gray-300 hover:text-white transition-colors">
+              <Link href="#" className="text-gray-300 hover:text-white transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/licensing" className="text-gray-300 hover:text-white transition-colors">
+              <Link href="#" className="text-gray-300 hover:text-white transition-colors">
                 Licensing
               </Link>
-              <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+              <Link href="#" className="text-gray-300 hover:text-white transition-colors">
                 Contact
               </Link>
             </nav>

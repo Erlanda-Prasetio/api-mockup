@@ -5,6 +5,7 @@ import type React from "react"
 import { useState, useEffect, useRef } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import ReCAPTCHA from "react-google-recaptcha"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -13,20 +14,22 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ArrowLeft, Upload, Shield, AlertCircle } from "lucide-react"
+import { toast } from "sonner"
 
 export default function LaporanPage() {
   const [formData, setFormData] = useState({
-    kategori: "",
+    kategori_id: "",
     deskripsi: "",
     tanggal: "",
-    namaTerduga: "",
-    nipTerduga: "",
-    jabatanTerduga: "",
-    jenisKelamin: "",
+    nama_terduga: "",
+    nip_terduga: "",
+    jabatan_terduga: "",
+    jenis_kelamin: "",
     nama: "",
     email: "",
     telepon: "",
     anonim: false,
+    validasi_pengaduan: false,
   })
 
   const [searchTerm, setSearchTerm] = useState("")
@@ -38,9 +41,41 @@ export default function LaporanPage() {
   })
   const [isDragging, setIsDragging] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  const [recaptchaToken, setRecaptchaToken] = useState<string>("")
+  const [recaptchaVerified, setRecaptchaVerified] = useState(false)
+  const recaptchaRef = useRef<ReCAPTCHA>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const editorRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Handle reCAPTCHA success
+  const handleRecaptchaChange = (token: string | null) => {
+    if (token) {
+      setRecaptchaToken(token)
+      setRecaptchaVerified(true)
+      console.log('reCAPTCHA verified:', token)
+    } else {
+      setRecaptchaToken("")
+      setRecaptchaVerified(false)
+      console.log('reCAPTCHA expired or failed')
+    }
+  }
+
+  // Handle reCAPTCHA error
+  const handleRecaptchaError = () => {
+    setRecaptchaToken("")
+    setRecaptchaVerified(false)
+    console.log('reCAPTCHA error')
+  }
+
+  // Reset reCAPTCHA
+  const resetRecaptcha = () => {
+    if (recaptchaRef.current) {
+      recaptchaRef.current.reset()
+    }
+    setRecaptchaToken("")
+    setRecaptchaVerified(false)
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -56,6 +91,8 @@ export default function LaporanPage() {
       document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [])
+
+  // No initialization needed for reCAPTCHA - it handles itself
 
   // List of names for dropdown
   const namesList = [
@@ -173,12 +210,16 @@ export default function LaporanPage() {
       const maxSize = 10 * 1024 * 1024 // 10MB
       
       if (!validTypes.includes(file.type)) {
-        alert(`File ${file.name} memiliki format yang tidak didukung. Gunakan PDF, DOC, DOCX, JPG, JPEG, atau PNG.`)
+        toast.error(`File ${file.name} memiliki format yang tidak didukung`, {
+          description: "Gunakan PDF, DOC, DOCX, JPG, JPEG, atau PNG."
+        })
         return false
       }
       
       if (file.size > maxSize) {
-        alert(`File ${file.name} terlalu besar. Maksimal ukuran file adalah 10MB.`)
+        toast.error(`File ${file.name} terlalu besar`, {
+          description: "Maksimal ukuran file adalah 10MB."
+        })
         return false
       }
       
@@ -218,11 +259,119 @@ export default function LaporanPage() {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // Handle form submission here
-    console.log("Form submitted:", formData)
-    alert("Laporan berhasil dikirim! Anda akan menerima nomor tiket untuk tracking.")
+    
+    // Validate reCAPTCHA
+    if (!recaptchaVerified) {
+      toast.error("Mohon selesaikan verifikasi reCAPTCHA terlebih dahulu.")
+      return
+    }
+
+    // Validate required checkbox
+    if (!formData.validasi_pengaduan) {
+      toast.error("Mohon centang pernyataan validasi data terlebih dahulu.")
+      return
+    }
+    
+    try {
+      // Verify reCAPTCHA token with server
+      const verifyResponse = await fetch('/api/verify-recaptcha', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: recaptchaToken }),
+      })
+      
+      const verifyResult = await verifyResponse.json()
+      
+      if (!verifyResult.success) {
+        toast.error("Verifikasi reCAPTCHA gagal. Mohon coba lagi.")
+        resetRecaptcha()
+        return
+      }
+      
+      // Prepare data for database (convert boolean to 0/1)
+      const dbFormData = {
+        ...formData,
+        anonim: formData.anonim ? 1 : 0,
+        validasi_pengaduan: formData.validasi_pengaduan ? 1 : 0,
+        captchaVerified: true
+      }
+      
+      // Log what we're sending to the API
+      console.log('formData:', JSON.stringify(dbFormData, null, 2));
+      console.log('Selected Files:', selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
+      console.log('=====================================');
+      
+      // Submit form data to the reports API
+      const submitResponse = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(dbFormData),
+      })
+      
+      const submitResult = await submitResponse.json()
+      
+      console.log('📥 API Response:', {
+        status: submitResponse.status,
+        data: submitResult
+      });
+      
+      if (submitResponse.status === 200 && submitResult.message) {
+        toast.success("Laporan Anda Berhasil Di Kirim!", {
+          description: `Silahkan Catat Kode Aduan Anda: ${submitResult.data.kode_aduan}`,
+          action: {
+            label: "OK",
+            onClick: () => console.log("OK clicked"),
+          },
+          duration: 10000, // Show for 10 seconds
+        })
+        
+        // Reset form on successful submission
+        setFormData({
+          kategori_id: "",
+          deskripsi: "",
+          tanggal: "",
+          nama_terduga: "",
+          nip_terduga: "",
+          jabatan_terduga: "",
+          jenis_kelamin: "",
+          nama: "",
+          email: "",
+          telepon: "",
+          anonim: false,
+          validasi_pengaduan: false,
+        })
+        setSelectedFiles([])
+        resetRecaptcha() // Reset reCAPTCHA
+        
+        // Clear rich text editor
+        if (editorRef.current) {
+          editorRef.current.innerHTML = ""
+        }
+        
+      } else if (submitResponse.status === 422) {
+        // Validation errors - new format
+        const errorMessages = Object.entries(submitResult)
+          .map(([field, messages]) => `${field}: ${(messages as string[]).join(', ')}`)
+          .join('\n');
+        toast.error("Validasi gagal", {
+          description: errorMessages,
+          duration: 8000,
+        })
+      } else {
+        // Other errors
+        toast.error(`Terjadi kesalahan: ${submitResult.message || 'Unknown error'}`)
+      }
+      
+    } catch (error) {
+      console.error('Submission error:', error)
+      toast.error("Terjadi kesalahan saat mengirim laporan. Mohon coba lagi.")
+    }
   }
 
   return (
@@ -237,7 +386,7 @@ export default function LaporanPage() {
                 alt="PTSP Jateng Logo"
                 width={240}
                 height={120}
-                className="h-20 w-auto"
+                className="h-28 w-auto"
               />
             </Link>
 
@@ -289,8 +438,8 @@ export default function LaporanPage() {
                 <div>
                   <Label htmlFor="kategori" className="text-base font-medium mb-3 block">Kategori Pelanggaran *</Label>
                   <Select
-                    value={formData.kategori}
-                    onValueChange={(value) => setFormData({ ...formData, kategori: value })}
+                    value={formData.kategori_id}
+                    onValueChange={(value) => setFormData({ ...formData, kategori_id: value })}
                   >
                     <SelectTrigger className="h-12">
                       <SelectValue placeholder="Pilih kategori pelanggaran" />
@@ -415,12 +564,12 @@ export default function LaporanPage() {
                     <div className="relative" ref={dropdownRef}>
                       <Input
                         id="namaTerduga"
-                        value={searchTerm || formData.namaTerduga}
+                        value={searchTerm || formData.nama_terduga}
                         onChange={(e) => {
                           setSearchTerm(e.target.value)
                           setIsDropdownOpen(true)
                           if (!e.target.value) {
-                            setFormData({ ...formData, namaTerduga: "" })
+                            setFormData({ ...formData, nama_terduga: "" })
                           }
                         }}
                         onFocus={() => setIsDropdownOpen(true)}
@@ -437,7 +586,7 @@ export default function LaporanPage() {
                                 key={index}
                                 className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                                 onClick={() => {
-                                  setFormData({ ...formData, namaTerduga: name })
+                                  setFormData({ ...formData, nama_terduga: name })
                                   setSearchTerm("")
                                   setIsDropdownOpen(false)
                                 }}
@@ -452,12 +601,12 @@ export default function LaporanPage() {
                           )}
                         </div>
                       )}
-                      {formData.namaTerduga && !searchTerm && (
+                      {formData.nama_terduga && !searchTerm && (
                         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                           <button
                             type="button"
                             onClick={() => {
-                              setFormData({ ...formData, namaTerduga: "" })
+                              setFormData({ ...formData, nama_terduga: "" })
                               setSearchTerm("")
                             }}
                             className="text-gray-400 hover:text-gray-600"
@@ -469,9 +618,9 @@ export default function LaporanPage() {
                         </div>
                       )}
                     </div>
-                    {formData.namaTerduga && !searchTerm && (
+                    {formData.nama_terduga && !searchTerm && (
                       <div className="mt-2 text-sm text-gray-600">
-                        Dipilih: <span className="font-medium">{formData.namaTerduga}</span>
+                        Dipilih: <span className="font-medium">{formData.nama_terduga}</span>
                       </div>
                     )}
                   </div>
@@ -479,8 +628,8 @@ export default function LaporanPage() {
                     <Label htmlFor="nipTerduga" className="text-base font-medium mb-3 block">NIP Terduga</Label>
                     <Input
                       id="nipTerduga"
-                      value={formData.nipTerduga}
-                      onChange={(e) => setFormData({ ...formData, nipTerduga: e.target.value })}
+                      value={formData.nip_terduga}
+                      onChange={(e) => setFormData({ ...formData, nip_terduga: e.target.value })}
                       placeholder="Isikan NIP terduga jika tidak ada (-)"
                       className="h-12"
                     />
@@ -492,8 +641,8 @@ export default function LaporanPage() {
                     <Label htmlFor="jabatanTerduga" className="text-base font-medium mb-3 block">Jabatan Terduga *</Label>
                     <Input
                       id="jabatanTerduga"
-                      value={formData.jabatanTerduga}
-                      onChange={(e) => setFormData({ ...formData, jabatanTerduga: e.target.value })}
+                      value={formData.jabatan_terduga}
+                      onChange={(e) => setFormData({ ...formData, jabatan_terduga: e.target.value })}
                       placeholder="Isikan Jabatan Terduga"
                       className="h-12"
                       required
@@ -502,8 +651,8 @@ export default function LaporanPage() {
                   <div>
                     <Label htmlFor="jenisKelamin" className="text-base font-medium mb-3 block">Jenis Kelamin *</Label>
                     <Select
-                      value={formData.jenisKelamin}
-                      onValueChange={(value) => setFormData({ ...formData, jenisKelamin: value })}
+                      value={formData.jenis_kelamin}
+                      onValueChange={(value) => setFormData({ ...formData, jenis_kelamin: value })}
                     >
                       <SelectTrigger className="h-12 w-full">
                         <SelectValue placeholder="Pilih jenis kelamin" />
@@ -517,8 +666,8 @@ export default function LaporanPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="bukti">Lampiran Bukti (Opsional)</Label>
-                  <p className="text-sm text-gray-500 mb-3">*Dapat diisikan lebih dari 1 bukti</p>
+                  <Label htmlFor="bukti[]">Lampiran Bukti (Opsional)</Label>
+                  <p className="text-sm text-gray-500 mb-3">Satu atau lebih file bukti</p>
                   <div 
                     className={`relative mt-2 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
                       isDragging 
@@ -541,6 +690,7 @@ export default function LaporanPage() {
                     <p className="text-xs text-gray-500">Format: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 10MB per file)</p>
                     <input 
                       ref={fileInputRef}
+                      name="bukti[]"
                       type="file" 
                       className="hidden" 
                       multiple 
@@ -596,6 +746,21 @@ export default function LaporanPage() {
                       ))}
                     </div>
                   )}
+
+                  {/* Validation Checkbox */}
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <div className="flex items-start space-x-3">
+                      <Checkbox
+                        id="validasi_pengaduan"
+                        checked={formData.validasi_pengaduan}
+                        onCheckedChange={(checked) => setFormData({ ...formData, validasi_pengaduan: checked as boolean })}
+                        className="h-5 w-5 mt-1"
+                      />
+                      <Label htmlFor="validasi_pengaduan" className="text-base leading-relaxed">
+                        Dengan ini saya menyatakan bahwa seluruh data yang telah diisi adalah benar, akurat, dan sesuai dengan kondisi yang sebenarnya.
+                      </Label>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -662,14 +827,52 @@ export default function LaporanPage() {
             </Card>
 
             {/* Submit Button */}
-            <div className="text-center">
-              <Button type="submit" size="lg" className="bg-red-600 hover:bg-red-700 px-8">
-                Kirim Laporan
-              </Button>
-              <p className="text-sm text-gray-600 mt-4">
-                Dengan mengirim laporan ini, Anda menyatakan bahwa informasi yang diberikan adalah benar dan dapat
-                dipertanggungjawabkan.
-              </p>
+            <div className="flex justify-start">
+              <div>
+                {/* Google reCAPTCHA v2 */}
+                <div className="mb-6">
+                  <Label className="text-base font-medium mb-3 block">Verifikasi Keamanan *</Label>
+                  <div className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <ReCAPTCHA
+                      ref={recaptchaRef}
+                      sitekey={process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+                      onChange={handleRecaptchaChange}
+                      onError={handleRecaptchaError}
+                      onExpired={() => handleRecaptchaChange(null)}
+                      theme="light"
+                      size="normal"
+                    />
+                    {recaptchaVerified && (
+                      <div className="flex items-center text-green-600 text-sm mt-2">
+                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                        Verifikasi berhasil
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">
+                    Centang kotak di atas untuk memverifikasi bahwa Anda bukan robot
+                  </p>
+                </div>
+
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  disabled={!recaptchaVerified || !formData.validasi_pengaduan}
+                  className={`px-8 transition-all duration-200 ${
+                    (recaptchaVerified && formData.validasi_pengaduan)
+                      ? 'bg-red-600 hover:bg-red-700 cursor-pointer' 
+                      : 'bg-gray-400 cursor-not-allowed hover:bg-gray-400'
+                  }`}
+                >
+                  Kirim Laporan
+                </Button>
+                <p className="text-sm text-gray-600 mt-4 text-center">
+                  Dengan mengirim laporan ini, Anda menyatakan bahwa informasi yang diberikan adalah benar dan dapat
+                  dipertanggungjawabkan.
+                </p>
+              </div>
             </div>
           </form>
         </div>
