@@ -162,8 +162,8 @@ export default function HomePage() {
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto">
             <div className="lg:w-1/2 mb-8 lg:mb-0">
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-teal-700 mb-6 text-left leading-tight">
-                Whistle Blowing System
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-teal-700 mb-6 text-left leading-tight">
+                <span className="whitespace-nowrap">Whistle Blowing</span> System
               </h1>
               <p className="text-2xl md:text-3xl lg:text-4xl text-gray-600 mb-6 text-left">
                 DPMPTSP Provinsi Jawa Tengah
