@@ -24,8 +24,8 @@ export async function PATCH(
     }
 
     // Check if report exists
-    const checkReport = db.prepare('SELECT id FROM reports WHERE id = ?');
-    const existingReport = checkReport.get(reportId);
+    const checkReport = db.prepare('SELECT id FROM reports WHERE id = $1');
+    const existingReport = await checkReport.get([reportId]);
 
     if (!existingReport) {
       console.log('❌ Status Update - Contoh Respons Error (404 Not Found):');
@@ -41,11 +41,11 @@ export async function PATCH(
     // Update report status
     const updateReport = db.prepare(`
       UPDATE reports 
-      SET status_pengaduan_id = ?, notes = ?, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      SET status_pengaduan_id = $1, notes = $2, updated_at = CURRENT_TIMESTAMP
+      WHERE id = $3
     `);
 
-    updateReport.run(status_pengaduan_id, notes || null, reportId);
+    await updateReport.run([status_pengaduan_id, notes || null, reportId]);
 
     // Get updated report data
     const getUpdatedReport = db.prepare(`
@@ -73,10 +73,10 @@ export async function PATCH(
         updated_at,
         file_rekomendasi
       FROM reports 
-      WHERE id = ?
+      WHERE id = $1
     `);
 
-    const updatedReport = getUpdatedReport.get(reportId) as any;
+    const updatedReport = await getUpdatedReport.get([reportId]) as any;
 
     // Format response according to the specified format
     const formattedResponse = [{
@@ -127,8 +127,8 @@ export async function DELETE(
     const reportId = parseInt(params.id);
 
     // Check if report exists
-    const checkReport = db.prepare('SELECT id FROM reports WHERE id = ?');
-    const existingReport = checkReport.get(reportId);
+    const checkReport = db.prepare('SELECT id FROM reports WHERE id = $1');
+    const existingReport = await checkReport.get([reportId]);
 
     if (!existingReport) {
       console.log(' Delete Report - Contoh Respons Error (404 Not Found):');
@@ -142,8 +142,8 @@ export async function DELETE(
     }
 
     // Delete report
-    const deleteReport = db.prepare('DELETE FROM reports WHERE id = ?');
-    deleteReport.run(reportId);
+    const deleteReport = db.prepare('DELETE FROM reports WHERE id = $1');
+    await deleteReport.run([reportId]);
 
     console.log(' Delete Report - Success (200 OK):');
     console.log(JSON.stringify({ message: 'Data berhasil dihapus' }, null, 2));
