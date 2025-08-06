@@ -138,10 +138,10 @@ export async function POST(request: NextRequest) {
         jabatan_terduga, jenis_kelamin, nama, email, telepon, 
         anonim, validasi_pengaduan, recaptcha_verified, kode_aduan
       ) VALUES (
-        @kategori_id, @deskripsi, @tanggal, @nama_terduga, @nip_terduga,
-        @jabatan_terduga, @jenis_kelamin, @nama, @email, @telepon,
-        @anonim, @validasi_pengaduan, @recaptcha_verified, @kode_aduan
-      )
+        $1, $2, $3, $4, $5,
+        $6, $7, $8, $9, $10,
+        $11, $12, $13, $14
+      ) RETURNING id
     `);
 
     // Generate a simple ticket number based on the timestamp
@@ -155,7 +155,22 @@ export async function POST(request: NextRequest) {
       kode_aduan: kodeAduan
     };
 
-    const result = insertReport.run(reportDataWithKode);
+    const result = await insertReport.run([
+      reportDataWithKode.kategori_id,
+      reportDataWithKode.deskripsi,
+      reportDataWithKode.tanggal,
+      reportDataWithKode.nama_terduga,
+      reportDataWithKode.nip_terduga,
+      reportDataWithKode.jabatan_terduga,
+      reportDataWithKode.jenis_kelamin,
+      reportDataWithKode.nama,
+      reportDataWithKode.email,
+      reportDataWithKode.telepon,
+      reportDataWithKode.anonim,
+      reportDataWithKode.validasi_pengaduan,
+      reportDataWithKode.recaptcha_verified,
+      reportDataWithKode.kode_aduan
+    ]);
 
     console.log('Laporan berhasil disimpan ke database!');
     console.log(' Report ID:', result.lastInsertRowid);
@@ -219,13 +234,14 @@ export async function GET(request: NextRequest) {
         kode_aduan, created_at
       FROM reports 
       ORDER BY created_at DESC 
-      LIMIT ? OFFSET ?
+      LIMIT $1 OFFSET $2
     `);
 
-    const reports = getReports.all(limit, offset);
+    const reports = await getReports.all([limit, offset]);
     
     const countQuery = db.prepare('SELECT COUNT(*) as total FROM reports');
-    const { total } = countQuery.get() as { total: number };
+    const countResult = await countQuery.get();
+    const total = countResult?.total || 0;
 
     return NextResponse.json({
       success: true,

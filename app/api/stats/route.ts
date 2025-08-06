@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
       GROUP BY kategori_id
     `);
 
-    const categoryCounts = getCategoryCounts.all() as { kategori_id: string; count: number }[];
+    const categoryCounts = await getCategoryCounts.all() as { kategori_id: string; count: number }[];
 
     // Initialize stats with zero values
     const stats = {
@@ -31,7 +31,8 @@ export async function GET(request: NextRequest) {
 
     // Get total count for additional info
     const getTotalCount = db.prepare('SELECT COUNT(*) as total FROM reports');
-    const { total } = getTotalCount.get() as { total: number };
+    const totalResult = await getTotalCount.get();
+    const total = totalResult?.total || 0;
 
     return NextResponse.json({
       success: true,

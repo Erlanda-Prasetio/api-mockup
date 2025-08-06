@@ -43,10 +43,10 @@ export async function GET(request: NextRequest) {
         updated_at,
         file_rekomendasi
       FROM reports 
-      WHERE kode_aduan = ?
+      WHERE kode_aduan = $1
     `);
 
-    const report = searchReport.get(kodeAduan) as any;
+    const report = await searchReport.get([kodeAduan]) as any;
 
     if (!report) {
       console.log(' Respons Error (404 Not Found):');
