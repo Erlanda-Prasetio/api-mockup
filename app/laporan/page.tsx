@@ -207,7 +207,7 @@ export default function LaporanPage() {
         'image/jpg',
         'image/png'
       ]
-      const maxSize = 10 * 1024 * 1024 // 10MB
+      const maxSize = 2 * 1024 * 1024 // 2MB
       
       if (!validTypes.includes(file.type)) {
         toast.error(`File ${file.name} memiliki format yang tidak didukung`, {
@@ -218,7 +218,7 @@ export default function LaporanPage() {
       
       if (file.size > maxSize) {
         toast.error(`File ${file.name} terlalu besar`, {
-          description: "Maksimal ukuran file adalah 10MB."
+          description: "Maksimal ukuran file adalah 2MB."
         })
         return false
       }
@@ -297,11 +297,18 @@ export default function LaporanPage() {
         ...formData,
         anonim: formData.anonim ? 1 : 0,
         validasi_pengaduan: formData.validasi_pengaduan ? 1 : 0,
+        // placeholder for kode_aduan; backend may overwrite/generate
+        kode_aduan: undefined as unknown as string,
         captchaVerified: true
       }
       
       // Log what we're sending to the API
-      console.log('formData:', JSON.stringify(dbFormData, null, 2));
+      const dbFormDataWithCode = {
+        ...dbFormData,
+        kode_aduan: `${new Date().toISOString().slice(0,10).replace(/-/g,'')}${Math.floor(Math.random() * 100000).toString().padStart(5, '0')}`
+      };
+      
+      console.log('formData:', JSON.stringify(dbFormDataWithCode, null, 2));
       console.log('Selected Files:', selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
       console.log('=====================================');
       
@@ -311,17 +318,24 @@ export default function LaporanPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dbFormData),
+        body: JSON.stringify(dbFormDataWithCode),
       })
       
       const submitResult = await submitResponse.json()
       
-      console.log('📥 API Response:', {
+      console.log('API Response:', {
         status: submitResponse.status,
         data: submitResult
       });
       
       if (submitResponse.status === 200 && submitResult.message) {
+        // Fill the generated kode_aduan back into our local form data object
+        dbFormData.kode_aduan = submitResult?.data?.kode_aduan
+        // Log success including generated kode_aduan
+        console.log('Submit success:', {
+          formData: dbFormData,
+          generated_kode_aduan: submitResult?.data?.kode_aduan || '(no code returned)'
+        });
         toast.success("Laporan Anda Berhasil Di Kirim!", {
           description: `Silahkan Catat Kode Aduan Anda: ${submitResult.data.kode_aduan}`,
           action: {
@@ -377,16 +391,16 @@ export default function LaporanPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="sticky top-0 z-50 bg-white shadow-md">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-28">
+          <div className="flex items-center justify-between h-20 md:h-20">
             <Link href="/" className="flex items-center space-x-4 cursor-pointer">
               <Image
                 src="/images/ptsp-logo.png"
                 alt="PTSP Jateng Logo"
-                width={240}
-                height={120}
-                className="h-28 w-auto"
+                width={220}
+                height={110}
+                className="h-24 w-auto"
               />
             </Link>
 
@@ -687,7 +701,7 @@ export default function LaporanPage() {
                     }`}>
                       {isDragging ? 'Lepaskan file di sini' : 'Klik untuk upload atau drag & drop file'}
                     </p>
-                    <p className="text-xs text-gray-500">Format: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 10MB per file)</p>
+                    <p className="text-xs text-gray-500">Format: PDF, DOC, DOCX, JPG, JPEG, PNG (Max 2MB per file)</p>
                     <input 
                       ref={fileInputRef}
                       name="bukti[]"

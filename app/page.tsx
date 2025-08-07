@@ -8,8 +8,9 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { FileText, AlertTriangle, Shield, Search } from "lucide-react"
+import { FileText, AlertTriangle, Shield, Search,  ArrowRight } from "lucide-react"
 import { toast } from "sonner"
+
 
 export default function HomePage() {
   const [stats, setStats] = useState({
@@ -132,25 +133,25 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <header className="bg-white shadow-sm">
+      <header className="sticky top-0 z-50 bg-white shadow-md">
         <div className="container mx-auto px-4">
-          <div className="flex items-center justify-between h-28">
+          <div className="flex items-center justify-between h-20 md:h-20">
             <Link href="/" className="flex items-center space-x-4 cursor-pointer">
               <Image
                 src="/images/ptsp-logo.png"
                 alt="PTSP Jateng Logo"
-                width={300}
-                height={150}
-                className="h-28 w-auto"
+                width={260}
+                height={130}
+                className="h-23 w-auto"
               />
             </Link>
 
-            <nav className="hidden lg:flex items-center">
+            <nav className="flex items-center">
               <Button
                 className="bg-red-600 hover:bg-red-700 text-white px-8 py-3 text-lg"
                 onClick={() => (window.location.href = "/laporan")}
               >
-                Laporkan
+               Laporkan
               </Button>
             </nav>
           </div>
@@ -161,11 +162,11 @@ export default function HomePage() {
       <section className="min-h-[calc(100vh-7rem)] bg-white flex items-center">
         <div className="container mx-auto px-4">
           <div className="flex flex-col lg:flex-row items-center justify-between max-w-7xl mx-auto">
-            <div className="lg:w-1/2 mb-8 lg:mb-0">
-              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-teal-700 mb-6 text-left leading-tight">
+            <div className="lg:w-1/2 mb-8 lg:mb-0 lg:-ml-10 xl:-ml-18">
+              <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black md:font-black tracking-tight text-teal-700 mb-6 text-left leading-tight">
                 <span className="whitespace-nowrap">Whistle Blowing</span> System
               </h1>
-              <p className="text-2xl md:text-3xl lg:text-4xl text-gray-600 mb-6 text-left">
+              <p className="text-2xl md:text-3xl lg:text-4xl text-black mb-6 text-left">
                 DPMPTSP Provinsi Jawa Tengah
               </p>
               <p className="text-lg md:text-xl text-gray-600 mb-12 text-left leading-relaxed">
@@ -174,18 +175,21 @@ export default function HomePage() {
              
               <Button
                 size="lg"
-                className="bg-red-600 hover:bg-red-700 text-white px-12 py-4 text-xl"
+                className="bg-red-600 hover:bg-red-700 text-white px-12 py-4 text-xl inline-flex items-center gap-3 group"
                 onClick={() => (window.location.href = "/laporan")}
               >
                 Laporkan
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-20 w-15 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3.3">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                </svg>
               </Button>
             </div>
-            <div className="lg:w-1/2 flex justify-center lg:justify-end">
+            <div className="lg:w-1/2 flex justify-center lg:justify-end lg:ml-6 xl:ml-12">
               <Image
                 src="/images/landing.png"
                 alt="No Corruption - Anti Corruption Illustration"
-                width={600}
-                height={600}
+                width={475}
+                height={475}
                 className="max-w-full h-auto"
               />
             </div>
@@ -322,7 +326,7 @@ export default function HomePage() {
                 alt="PTSP Jateng Logo"
                 width={360}
                 height={180}
-                className="h-28 w-auto"
+                className="h-24 w-auto"
               />
             </div>
 
