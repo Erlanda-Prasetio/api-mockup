@@ -34,6 +34,7 @@ export default function LaporanPage() {
 
   const [searchTerm, setSearchTerm] = useState("")
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [hasFocusedNama, setHasFocusedNama] = useState(false)
   const [formatStates, setFormatStates] = useState({
     bold: false,
     italic: false,
@@ -82,7 +83,8 @@ export default function LaporanPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
-        setSearchTerm("")
+        // Do not clear search term here; keep what user typed
+        // setSearchTerm("")
       }
     }
 
@@ -92,57 +94,117 @@ export default function LaporanPage() {
     }
   }, [])
 
+  const [employees, setEmployees] = useState<Array<{ name: string; jabatan: string | null }>>([])
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true)
+  
+  // Fetch employee data when component mounts
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        console.log('Fetching employees...');
+        const response = await fetch('/api/pegawai')
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch employees')
+        }
+        
+        const responseText = await response.text();
+        console.log('Raw response:', responseText);
+        
+        const data = JSON.parse(responseText);
+        console.log('Parsed data:', data);
+
+        if (Array.isArray(data)) {
+          const validEmployees = data
+            .filter((emp: any) => emp && typeof emp === 'object' && emp.name)
+            .map((emp: any) => ({
+              name: emp.name,
+              jabatan: emp.jabatan || null
+            }));
+          console.log('Processed employees:', validEmployees);
+          setEmployees(validEmployees);
+        } else {
+          console.error('Invalid data format received:', data);
+          toast.error('Format data pegawai tidak valid');
+        }
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        toast.error('Gagal memuat daftar pegawai');
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [])
+
   // No initialization needed for reCAPTCHA - it handles itself
 
   // List of names for dropdown
-  const namesList = [
-    "Aldriyan Satria Pradiksa, S.Kom",
-    "Arinta Sistyanika, S.IP",
-    "Ariyanto, SH",
-    "Arya Parama Widya, S.IP",
-    "Christina Harianti Nugraheni, S.STP, MAP",
-    "Danang Pambudi, SH",
-    "Dra. Ratna Dewajati, MT",
-    "Dra. ST Khasanaturodhiyah, M.Si",
-    "Drs. Johan Hadiyanto, M.Si",
-    "Dwi Yuli Wibowo, A.Md",
-    "Erlin Nur Marfuah .S.IP, M.Sos.",
-    "Erna Sulandari, SE",
-    "Fajar Efendi, S.STP. MM",
-    "Hoerun Nisa, S.STP",
-    "Isnin Ulfana.. S.STP",
-    "Joko Supomo, S.Sos",
-    "Linda Widiastuti Ariningrum, S.Sos, M.Si",
-    "Meira Kartika Putri, S.STP",
-    "Mochammad Rizal Sidik, SE, MAP.",
-    "Mohamad Arifin Katili, S.Sos, MM",
-    "Munawir, SH.MH",
-    "Natalia, SE.",
-    "Nency Widya Rahayu, SE. Akt, M.Ak.",
-    "Novan Dwi Anggarda, S.Kom",
-    "Novan Dwi Anggarda, S.Kom a",
-    "Noviana Handajani, S.IP, MM",
-    "PRADITYA YUDHA ARKA PRATAMA S. Ak",
-    "Primasto Ardi Martono, SE.MT",
-    "Purwadi Teguh Al Rosyid, SH, MPA",
-    "Purwadi Teguh Al Rosyid, SH. MPA.",
-    "Ratna Kawuri, SH",
-    "Rifgi Majid, S.Kom",
-    "Rutty Yosika, S.Sos, MM",
-    "SONY HARSANTO, SE, MM",
-    "Sekar Cahyo Laksanti, SE",
-    "Setya Budi Prayitno, SE. MM",
-    "Sri Wahyuningsih, SH.",
-    "Sulistiyana, SE, MM.",
-    "Supriharjiyanto, ST, MT",
-    "TAVIANA DEWI HANDAYANI, ST",
-    "ZAKIA KAHFIDYA RATNASARI, ST, MM",
-  ]
+  // const namesList = [
+  //   "Aldriyan Satria Pradiksa, S.Kom",
+  //   "Arinta Sistyanika, S.IP",
+  //   "Ariyanto, SH",
+  //   "Arya Parama Widya, S.IP",
+  //   "Christina Harianti Nugraheni, S.STP, MAP",
+  //   "Danang Pambudi, SH",
+  //   "Dra. Ratna Dewajati, MT",
+  //   "Dra. ST Khasanaturodhiyah, M.Si",
+  //   "Drs. Johan Hadiyanto, M.Si",
+  //   "Dwi Yuli Wibowo, A.Md",
+  //   "Erlin Nur Marfuah .S.IP, M.Sos.",
+  //   "Erna Sulandari, SE",
+  //   "Fajar Efendi, S.STP. MM",
+  //   "Hoerun Nisa, S.STP",
+  //   "Isnin Ulfana.. S.STP",
+  //   "Joko Supomo, S.Sos",
+  //   "Linda Widiastuti Ariningrum, S.Sos, M.Si",
+  //   "Meira Kartika Putri, S.STP",
+  //   "Mochammad Rizal Sidik, SE, MAP.",
+  //   "Mohamad Arifin Katili, S.Sos, MM",
+  //   "Munawir, SH.MH",
+  //   "Natalia, SE.",
+  //   "Nency Widya Rahayu, SE. Akt, M.Ak.",
+  //   "Novan Dwi Anggarda, S.Kom",
+  //   "Novan Dwi Anggarda, S.Kom a",
+  //   "Noviana Handajani, S.IP, MM",
+  //   "PRADITYA YUDHA ARKA PRATAMA S. Ak",
+  //   "Primasto Ardi Martono, SE.MT",
+  //   "Purwadi Teguh Al Rosyid, SH, MPA",
+  //   "Purwadi Teguh Al Rosyid, SH. MPA.",
+  //   "Ratna Kawuri, SH",
+  //   "Rifgi Majid, S.Kom",
+  //   "Rutty Yosika, S.Sos, MM",
+  //   "SONY HARSANTO, SE, MM",
+  //   "Sekar Cahyo Laksanti, SE",
+  //   "Setya Budi Prayitno, SE. MM",
+  //   "Sri Wahyuningsih, SH.",
+  //   "Sulistiyana, SE, MM.",
+  //   "Supriharjiyanto, ST, MT",
+  //   "TAVIANA DEWI HANDAYANI, ST",
+  //   "ZAKIA KAHFIDYA RATNASARI, ST, MM",
+  // ]
 
-  // Filter names based on search term
-  const filteredNames = namesList.filter(name =>
-    name.toLowerCase().includes(searchTerm.toLowerCase())
-  )
+  // Debug employees state
+  useEffect(() => {
+    console.log('Current employees state:', employees);
+  }, [employees]);
+
+  // Build list once; filter by searchTerm if provided
+  const allEmployeeItems = (employees || []).filter(e => e && typeof e.name === 'string' && e.name.trim().length > 0)
+  const shownEmployees = searchTerm
+    ? allEmployeeItems.filter(e => e.name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : allEmployeeItems
+
+  // Show all names initially, filter only when searching
+  const filteredNames = employees
+    .filter(e => e?.name)
+    .map(e => e.name)
+
+  // Only apply search filter if there's a search term
+  const searchFilteredNames = searchTerm
+    ? filteredNames.filter(name => name.toLowerCase().includes(searchTerm.toLowerCase()))
+    : filteredNames
 
   // Check formatting states
   const checkFormatStates = () => {
@@ -580,38 +642,48 @@ export default function LaporanPage() {
                         id="namaTerduga"
                         value={searchTerm || formData.nama_terduga}
                         onChange={(e) => {
-                          setSearchTerm(e.target.value)
+                          const val = e.target.value
+                          setSearchTerm(val)
                           setIsDropdownOpen(true)
-                          if (!e.target.value) {
+                          if (!val) {
                             setFormData({ ...formData, nama_terduga: "" })
                           }
                         }}
-                        onFocus={() => setIsDropdownOpen(true)}
+                        onFocus={() => { setHasFocusedNama(true); setIsDropdownOpen(true) }}
                         placeholder="Ketik untuk mencari nama terduga..."
                         className="h-12"
                         required
                         autoComplete="off"
                       />
-                      {isDropdownOpen && (
+                      {isDropdownOpen && hasFocusedNama && (
                         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-64 overflow-y-auto">
-                          {filteredNames.length > 0 ? (
-                            filteredNames.map((name, index) => (
-                              <div
-                                key={index}
-                                className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
-                                onClick={() => {
-                                  setFormData({ ...formData, nama_terduga: name })
-                                  setSearchTerm("")
-                                  setIsDropdownOpen(false)
-                                }}
-                              >
-                                {name}
+                          {isLoadingEmployees ? (
+                              <div className="px-4 py-2 text-gray-500 text-sm">
+                                Memuat daftar pegawai...
                               </div>
-                            ))
-                          ) : (
-                            <div className="px-4 py-2 text-gray-500 text-sm">
-                              Tidak ada nama yang ditemukan
-                            </div>
+                            ) : shownEmployees.length > 0 ? (
+                              shownEmployees.map((emp, index) => (
+                                <div
+                                  key={index}
+                                  className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
+                                  onClick={() => {
+                                    setFormData({ ...formData, nama_terduga: emp.name })
+                                    setSearchTerm("")
+                                    setIsDropdownOpen(false)
+                                  }}
+                                >
+                                  <div className="font-medium">{emp.name}</div>
+                                  {emp.jabatan && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {emp.jabatan}
+                                    </div>
+                                  )}
+                                </div>
+                              ))
+                            ) : (
+                              <div className="px-4 py-2 text-gray-500 text-sm">
+                                Tidak ada nama yang ditemukan
+                              </div>
                           )}
                         </div>
                       )}
