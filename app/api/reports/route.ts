@@ -241,7 +241,7 @@ import { NextRequest, NextResponse } from 'next/server';
 const CATEGORY_MAP: Record<string, number> = {
   korupsi: 1,
   gratifikasi: 2,
-  maladministrasi: 3,
+  'benturan-kepentingan': 3, // Keep both mappings for compatibility
 };
 
 function normalizeJenisKelamin(value: unknown): string {
@@ -257,10 +257,16 @@ function normalizeJenisKelamin(value: unknown): string {
 }
 
 function normalizeKategoriId(value: unknown): string {
+  console.log('[normalizeKategoriId] Input value:', value, 'Type:', typeof value);
   if (value == null) return '';
   const v = String(value).trim();
-  if (/^\d+$/.test(v)) return v; // already numeric
+  console.log('[normalizeKategoriId] String value:', v);
+  if (/^\d+$/.test(v)) {
+    console.log('[normalizeKategoriId] Already numeric, returning:', v);
+    return v; // already numeric
+  }
   const mapped = CATEGORY_MAP[v.toLowerCase()];
+  console.log('[normalizeKategoriId] Mapped value:', mapped, 'for key:', v.toLowerCase());
   return mapped ? String(mapped) : '';
 }
 
@@ -280,6 +286,7 @@ const ALLOWED_FIELDS = new Set([
 ]);
 
 function normalizePayload(input: Record<string, unknown>) {
+  console.log('[normalizePayload] Input:', input);
   const out: Record<string, string> = {};
 
   // kategori_id mapping (slug or numeric -> numeric string)
@@ -317,6 +324,7 @@ function normalizePayload(input: Record<string, unknown>) {
     }
   });
 
+  console.log('[normalizePayload] Filtered output:', filtered);
   return filtered;
 }
 
