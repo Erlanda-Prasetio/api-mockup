@@ -28,13 +28,32 @@ export default function HomePage() {
       try {
         setIsLoadingStats(true)
         const response = await fetch('/api/stats')
-        const data = await response.json()
+        const result = await response.json()
 
-        if (data.success) {
-          setStats(data.data.stats)
+        if (result.success && Array.isArray(result.data)) {
+          const updatedStats = {
+            korupsi: 0,
+            gratifikasi: 0,
+            'benturan-kepentingan': 0,
+          }
+
+          // Process the API response data
+          result.data.forEach((item: any) => {
+            const count = parseInt(item.jumlah_pengaduan, 10) || 0
+            const nama = item.nama.toLowerCase()
+            
+            if (nama === 'korupsi') {
+              updatedStats.korupsi = count
+            } else if (nama === 'gratifikasi') {
+              updatedStats.gratifikasi = count
+            } else if (nama.includes('benturan')) {
+              updatedStats['benturan-kepentingan'] = count
+            }
+          })
+
+          setStats(updatedStats)
         } else {
-          console.error('Failed to fetch stats:', data.message)
-          // Keep default zero values
+          console.error('Failed to fetch stats: Invalid response format')
         }
       } catch (error) {
         console.error("Error fetching stats:", error)

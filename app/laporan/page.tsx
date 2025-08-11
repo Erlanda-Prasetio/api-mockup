@@ -94,7 +94,7 @@ export default function LaporanPage() {
     }
   }, [])
 
-  const [employees, setEmployees] = useState<Array<{ name: string; jabatan: string | null }>>([])
+  const [employees, setEmployees] = useState<Array<{ name: string; jabatan: string | null; nip: string | null }>>([])
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true)
   
   // Fetch employee data when component mounts
@@ -102,15 +102,15 @@ export default function LaporanPage() {
     const fetchEmployees = async () => {
       try {
         console.log('Fetching employees...');
-        const response = await fetch('/api/pegawai')
-        
+        const response = await fetch('/api/pegawai');
+
         if (!response.ok) {
-          throw new Error('Failed to fetch employees')
+          throw new Error('Failed to fetch employees');
         }
-        
+
         const responseText = await response.text();
         console.log('Raw response:', responseText);
-        
+
         const data = JSON.parse(responseText);
         console.log('Parsed data:', data);
 
@@ -119,7 +119,8 @@ export default function LaporanPage() {
             .filter((emp: any) => emp && typeof emp === 'object' && emp.name)
             .map((emp: any) => ({
               name: emp.name,
-              jabatan: emp.jabatan || null
+              jabatan: emp.jabatan || null,
+              nip: emp.nip || null
             }));
           console.log('Processed employees:', validEmployees);
           setEmployees(validEmployees);
@@ -260,7 +261,19 @@ export default function LaporanPage() {
 
   // Handle file selection
   const handleFileSelect = (files: FileList) => {
-    const validFiles = Array.from(files).filter(file => {
+    const maxFileCount = 10; // Maximum number of files allowed
+    const currentFileCount = selectedFiles.length;
+    const newFilesArray = Array.from(files);
+    
+    // Check if adding new files would exceed the limit
+    if (currentFileCount + newFilesArray.length > maxFileCount) {
+      toast.error(`Maksimal ${maxFileCount} file yang dapat diunggah`, {
+        description: `Anda sudah memiliki ${currentFileCount} file. Hanya dapat menambah ${maxFileCount - currentFileCount} file lagi.`
+      })
+      return;
+    }
+    
+    const validFiles = newFilesArray.filter(file => {
       const validTypes = [
         'application/pdf',
         'application/msword',
@@ -374,13 +387,26 @@ export default function LaporanPage() {
       console.log('Selected Files:', selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })));
       console.log('=====================================');
       
-      // Submit form data to the reports API
+      // Create FormData for multipart/form-data submission (to support file uploads)
+      const formDataToSend = new FormData();
+      
+      // Append all form fields
+      Object.entries(dbFormDataWithCode).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          formDataToSend.append(key, String(value));
+        }
+      });
+      
+      // Append files with bukti[] field name (as expected by the API)
+      selectedFiles.forEach((file, index) => {
+        formDataToSend.append('bukti[]', file, file.name);
+      });
+      
+      // Submit form data to the reports API using FormData
       const submitResponse = await fetch('/api/reports', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(dbFormDataWithCode),
+        // Don't set Content-Type header - let browser set it with boundary for multipart/form-data
+        body: formDataToSend,
       })
       
       const submitResult = await submitResponse.json()
@@ -662,22 +688,32 @@ export default function LaporanPage() {
                                 Memuat daftar pegawai...
                               </div>
                             ) : shownEmployees.length > 0 ? (
-                              shownEmployees.map((emp, index) => (
+                              shownEmployees.map((emp: { name: string; jabatan: string | null; nip: string | null }, index) => (
                                 <div
                                   key={index}
                                   className="px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                                   onClick={() => {
-                                    setFormData({ ...formData, nama_terduga: emp.name })
-                                    setSearchTerm("")
-                                    setIsDropdownOpen(false)
+                                    setFormData({ 
+                                      ...formData, 
+                                      nama_terduga: emp.name, 
+                                      jabatan_terduga: emp.jabatan || "", 
+                                      nip_terduga: emp.nip || "" 
+                                    });
+                                    setSearchTerm("");
+                                    setIsDropdownOpen(false);
                                   }}
                                 >
                                   <div className="font-medium">{emp.name}</div>
-                                  {emp.jabatan && (
+                                  {/* {emp.jabatan && (
                                     <div className="text-xs text-gray-500 mt-1">
                                       {emp.jabatan}
                                     </div>
                                   )}
+                                  {emp.nip && (
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      {emp.nip}
+                                    </div>
+                                  )} */}
                                 </div>
                               ))
                             ) : (

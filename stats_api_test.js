@@ -1,41 +1,17 @@
-require('dotenv').config();
+require('dotenv').config({ path: '.env.local' });
 const fetch = require('node-fetch');
 
 async function testStatsApi() {
   try {
-    // First, get the authentication token
-    const loginUrl = `${process.env.API_INTAN}/auth/login`;
-    const loginResponse = await fetch(loginUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        username: process.env.API_USERNAME,
-        password: process.env.API_PASSWORD
-      })
-    });
+    // Make the stats request with basic auth
+    const statsUrl = `${process.env.API_INTAN}/pengaduans/count`;
+    console.log('Requesting URL:', statsUrl);
 
-    if (!loginResponse.ok) {
-      throw new Error(`Login failed with status ${loginResponse.status}`);
-    }
-
-    const loginData = await loginResponse.json();
-    console.log('Login successful');
-    
-    // Get the token from the login response
-    const token = loginData.token || loginData.data?.token;
-    
-    if (!token) {
-      throw new Error('No token received from login');
-    }
-
-    // Now try to get the stats with the token
-    const statsUrl = `${process.env.API_INTAN}/pengaduan/count`;
+    const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
     const statsResponse = await fetch(statsUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/json',
       }
     });

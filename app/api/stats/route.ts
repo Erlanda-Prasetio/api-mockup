@@ -61,11 +61,12 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     // Get category counts from the official API
-    const apiUrl = process.env.API_INTAN || process.env.API_USERNAME || process.env.API_PASSWORD + '/pengaduan/count';
+    const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
+    const apiUrl = `${process.env.API_INTAN}/pengaduans/count`;
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${process.env.API_TOKEN}`,
+        'Authorization': `Basic ${credentials}`,
         'Content-Type': 'application/json',
       },
     });
@@ -83,42 +84,28 @@ export async function GET(request: NextRequest) {
       'benturan-kepentingan': 0
     };
 
-    // Map the API response to your existing stats format
-    // The API response structure may vary, so we handle multiple possible formats
-    let categoryCounts: { kategori_id: string; count: number }[] = [];
-    
+    // The API returns an array directly with format: [{kategori_id, nama, jumlah_pengaduan}]
     if (Array.isArray(categoryCountsData)) {
-      categoryCounts = categoryCountsData;
-    } else if (categoryCountsData.data && Array.isArray(categoryCountsData.data)) {
-      categoryCounts = categoryCountsData.data;
-    } else if (categoryCountsData.counts && Array.isArray(categoryCountsData.counts)) {
-      categoryCounts = categoryCountsData.counts;
+      categoryCountsData.forEach((item: any) => {
+        const id = String(item.kategori_id);
+        const count = parseInt(item.jumlah_pengaduan, 10) || 0;
+        
+        if (id === '1' || item.nama.toLowerCase() === 'korupsi') {
+          stats.korupsi = count;
+        } else if (id === '2' || item.nama.toLowerCase() === 'gratifikasi') {
+          stats.gratifikasi = count;
+        } else if (id === '3' || item.nama.toLowerCase().includes('benturan')) {
+          stats['benturan-kepentingan'] = count;
+        }
+      });
     }
-
-    // Update stats with actual counts from API response
-    categoryCounts.forEach(({ kategori_id, count }) => {
-      // Handle both numeric IDs and string names
-      const id = String(kategori_id).toLowerCase();
-      
-      if (id === '1' || id === 'korupsi') {
-        stats.korupsi = count;
-      } else if (id === '2' || id === 'gratifikasi') {
-        stats.gratifikasi = count;
-      } else if (id === '3' || id === 'benturan-kepentingan' || id === 'maladministrasi') {
-        stats['benturan-kepentingan'] = count;
-      }
-    });
 
     // Calculate total count
     const total = stats.korupsi + stats.gratifikasi + stats['benturan-kepentingan'];
 
     return NextResponse.json({
       success: true,
-      data: {
-        stats,
-        total,
-        timestamp: new Date().toISOString()
-      }
+      data: categoryCountsData
     });
 
   } catch (error) {
