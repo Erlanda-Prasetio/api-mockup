@@ -167,6 +167,7 @@
 //   }
 // }
 import { NextRequest, NextResponse } from 'next/server';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 interface UpdateStatusRequest {
   status_pengaduan_id: number;

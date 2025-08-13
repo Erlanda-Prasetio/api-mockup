@@ -1,6 +1,6 @@
 {
-  "name": "Whistle Blower System",
-  "version": "0.1.1",
+  "name": "Whistle Blowing System",
+  "version": "0.1.2",
   "private": true,
   "scripts": {
     "build": "next build",

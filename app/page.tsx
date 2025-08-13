@@ -157,11 +157,11 @@ export default function HomePage() {
           <div className="flex items-center justify-between h-20 md:h-20">
             <Link href="/" className="flex items-center space-x-4 cursor-pointer">
               <Image
-                src="/images/ptsp-logo.png"
+                src="/images/logo_baru.png"
                 alt="PTSP Jateng Logo"
                 width={260}
                 height={130}
-                className="h-23 w-auto"
+                className="h-28 w-auto"
               />
             </Link>
 
@@ -341,11 +341,11 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row items-center justify-between mb-8">
             <div className="mb-6 md:mb-0">
               <Image
-                src="/images/ptsp-logo.png"
+                src="/images/logo_baru.png"
                 alt="PTSP Jateng Logo"
                 width={360}
                 height={180}
-                className="h-24 w-auto"
+                className="h-26 w-auto"
               />
             </div>
 

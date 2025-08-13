@@ -5,9 +5,46 @@ import { Toaster } from '@/components/ui/sonner'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Whistle Blower DPMPTSP Jawa Tengah',
-  description: '',
-  generator: '',
+  title: 'Whistle Blowing DPMPTSP Jawa Tengah',
+  description: 'Sistem Pelaporan Whistleblowing DPMPTSP Provinsi Jawa Tengah - Laporkan korupsi, gratifikasi, dan benturan kepentingan secara aman dan rahasia.',
+  generator: 'Next.js',
+  keywords: 'whistleblowing, pelaporan, korupsi, gratifikasi, benturan kepentingan, DPMPTSP, Jawa Tengah',
+  authors: [{ name: 'DPMPTSP Jawa Tengah' }],
+  openGraph: {
+    title: 'Whistle Blowing DPMPTSP Jawa Tengah',
+    description: 'Sistem Pelaporan Whistleblowing DPMPTSP Provinsi Jawa Tengah - Laporkan korupsi, gratifikasi, dan benturan kepentingan secara aman dan rahasia.',
+    url: 'https://wbs.dpmptsp.jatengprov.go.id',
+    siteName: 'WBS DPMPTSP Jawa Tengah',
+    images: [
+      {
+        url: '/images/logo_baru.png',
+        width: 1800,
+        height: 730,
+        alt: 'DPMPTSP Jawa Tengah Logo',
+      },
+    ],
+    locale: 'id_ID',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Whistle Blowing DPMPTSP Jawa Tengah',
+    description: 'Sistem Pelaporan Whistleblowing DPMPTSP Provinsi Jawa Tengah - Laporkan korupsi, gratifikasi, dan benturan kepentingan secara aman dan rahasia.',
+    images: ['/images/logo_baru.png'],
+  },
+  icons: {
+    icon: [
+      { url: '/images/logo.png', sizes: '16x16', type: 'image/png' },
+      { url: '/images/logo.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/logo.png', sizes: '48x48', type: 'image/png' },
+      { url: '/images/logo.png', sizes: '64x64', type: 'image/png' },
+    ],
+    shortcut: { url: '/images/logo.png', sizes: '32x32', type: 'image/png' },
+    apple: [
+      { url: '/images/logo.png', sizes: '180x180', type: 'image/png' },
+      { url: '/images/logo.png', sizes: '192x192', type: 'image/png' },
+    ],
+  },
 }
 
 export default function RootLayout({

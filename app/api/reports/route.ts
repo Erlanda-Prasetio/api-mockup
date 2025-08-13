@@ -236,12 +236,13 @@
 //   }
 // }
 import { NextRequest, NextResponse } from 'next/server';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 // Basic mappings – adjust IDs to match INTAN categories if different
 const CATEGORY_MAP: Record<string, number> = {
   korupsi: 1,
   gratifikasi: 2,
-  'benturan-kepentingan': 3, // Keep both mappings for compatibility
+  'benturan-kepentingan': 3,
 };
 
 function normalizeJenisKelamin(value: unknown): string {
@@ -252,7 +253,7 @@ function normalizeJenisKelamin(value: unknown): string {
   if (v === 'p' || v === 'perempuan' || v === 'wanita' || v === 'female') {
     return 'Perempuan';
   }
-  // Fallback (INTAN will validate); better to send empty than wrong token
+  
   return '';
 }
 
@@ -263,14 +264,14 @@ function normalizeKategoriId(value: unknown): string {
   console.log('[normalizeKategoriId] String value:', v);
   if (/^\d+$/.test(v)) {
     console.log('[normalizeKategoriId] Already numeric, returning:', v);
-    return v; // already numeric
+    return v; 
   }
   const mapped = CATEGORY_MAP[v.toLowerCase()];
   console.log('[normalizeKategoriId] Mapped value:', mapped, 'for key:', v.toLowerCase());
   return mapped ? String(mapped) : '';
 }
 
-// Only allow/forward fields the INTAN API expects
+
 const ALLOWED_FIELDS = new Set([
   'nama_terduga',
   'nip_terduga',
@@ -279,7 +280,7 @@ const ALLOWED_FIELDS = new Set([
   'kategori_id',
   'deskripsi',
   'validasi_aduan',
-  'status_pengaduan_id', // usually set by server; omitted unless present
+  'status_pengaduan_id', 
   'nama',
   'email',
   'telepon',
@@ -313,7 +314,7 @@ function normalizePayload(input: Record<string, unknown>) {
     if (k in input) out[k] = input[k] == null ? '' : String(input[k]);
   });
 
-  // Finally keep only allowed keys and non-empty strings (except validasi_aduan which may be required)
+  // keep only allowed keys and non-empty strings (except validasi_aduan which may be required)
   const filtered: Record<string, string> = {};
   Object.entries(out).forEach(([k, v]) => {
     if (!ALLOWED_FIELDS.has(k)) return;
@@ -339,7 +340,7 @@ export async function POST(req: NextRequest) {
     const contentType = req.headers.get('content-type') || '';
     console.log('[reports POST] Incoming Content-Type:', contentType);
 
-    // We'll build either URLSearchParams (for JSON) or FormData (for forms)
+   
     let body: URLSearchParams | FormData;
     let headers: Record<string, string> = {
       Accept: 'application/json',
@@ -347,8 +348,8 @@ export async function POST(req: NextRequest) {
     };
 
     if (contentType.includes('application/json')) {
-      console.log('[reports POST] Using JSON normalization path');
-      // Client sent JSON; normalize then convert to application/x-www-form-urlencoded for INTAN
+      //console.log('[reports POST] Using JSON normalization path');
+  
       const json = (await req.json()) as Record<string, unknown>;
       const normalized = normalizePayload(json);
       console.log('[reports POST] Normalized (JSON)->x-www-form-urlencoded:', normalized);
@@ -360,8 +361,7 @@ export async function POST(req: NextRequest) {
       contentType.includes('multipart/form-data') ||
       contentType.includes('application/x-www-form-urlencoded')
     ) {
-      console.log('[reports POST] Using FormData normalization path');
-      // Client sent a form; convert FormData -> plain object, normalize, then send as FormData
+      //console.log('[reports POST] Using FormData normalization path');
       const incoming = await req.formData();
       const plain: Record<string, unknown> = {};
       for (const [key, value] of incoming.entries()) {
@@ -373,13 +373,11 @@ export async function POST(req: NextRequest) {
         }
       }
       const normalized = normalizePayload(plain);
-      console.log('[reports POST] Normalized (Form)->multipart (scalars only):', normalized);
+      //console.log('[reports POST] Normalized (Form)->multipart (scalars only):', normalized);
 
       const forward = new FormData();
       // Append normalized scalar fields
       Object.entries(normalized).forEach(([k, v]) => forward.append(k, v));
-      // Re-append any files with allowed keys (if INTAN expects e.g., 'bukti[]')
-      // If your frontend sends files under 'bukti', they will still be in incoming
       let fileCount = 0;
       for (const [key, value] of incoming.entries()) {
         if (value instanceof File) {

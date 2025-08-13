@@ -1,16 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export async function GET(request: NextRequest) {
   try {
     if (!process.env.API_INTAN || !process.env.API_USERNAME || !process.env.API_PASSWORD) {
       throw new Error('Required environment variables are not set');
     }
-
-    const basicAuth = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
+   
+    
+    // const basicAuth = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
+    // const response = await fetch(`${process.env.API_INTAN}/pegawai`, {
+    //   method: 'GET',
+    //   headers: {
+    //     'Authorization': `Basic ${basicAuth}`,
+    //     'Accept': 'application/json',
+    //   },
+    // });
+    const bearerToken = process.env.API_INTAN_TOKEN;
     const response = await fetch(`${process.env.API_INTAN}/pegawai`, {
       method: 'GET',
       headers: {
-        'Authorization': `Basic ${basicAuth}`,
+        'Authorization': `Bearer ${bearerToken}`,
         'Accept': 'application/json',
       },
     });

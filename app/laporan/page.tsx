@@ -83,7 +83,7 @@ export default function LaporanPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false)
-        // Do not clear search term here; keep what user typed
+        
         // setSearchTerm("")
       }
     }
@@ -232,7 +232,7 @@ export default function LaporanPage() {
       if (editorRef.current) {
         editorRef.current.focus()
       }
-    }, 10) // Small delay to ensure state update and refocus
+    }, 10) 
   }
 
   // Handle list commands specially
@@ -484,11 +484,11 @@ export default function LaporanPage() {
           <div className="flex items-center justify-between h-20 md:h-20">
             <Link href="/" className="flex items-center space-x-4 cursor-pointer">
               <Image
-                src="/images/ptsp-logo.png"
+                src="/images/logo_baru.png"
                 alt="PTSP Jateng Logo"
                 width={220}
                 height={110}
-                className="h-24 w-auto"
+                className="h-28 w-auto"
               />
             </Link>
 

@@ -57,12 +57,15 @@
 //   }
 // }if (!process.env.API_INTAN || !process.env.API_USERNAME || !process.env.API_PASSWORD)
 import { NextRequest, NextResponse } from 'next/server';
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 export async function GET(request: NextRequest) {
   try {
     // Get category counts from the official API
     const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
-    const apiUrl = `${process.env.API_INTAN}/pengaduans/count`;
+    //const apiUrl = `${process.env.API_INTAN}/pengaduans/count`;
+    const apiUrl = `${process.env.API_INTAN}/pengaduan/count`;
+     console.log('Attempting to fetch this exact URL:', apiUrl);
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -72,19 +75,25 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
+      // If the response is not OK, log the body as text to see the HTML
+      const errorBody = await response.text();
+      console.error('API did not return JSON. It returned this HTML page:');
+      console.error(errorBody);
+      
       throw new Error(`API request failed with status ${response.status}`);
     }
 
+    // This line will only be reached if response.ok is true
     const categoryCountsData = await response.json();
     
-    // Initialize stats with zero values (keeping your existing structure)
+    // Initialize stats with zero values 
     const stats = {
       korupsi: 0,
       gratifikasi: 0,
       'benturan-kepentingan': 0
     };
 
-    // The API returns an array directly with format: [{kategori_id, nama, jumlah_pengaduan}]
+    //  with format: [{kategori_id, nama, jumlah_pengaduan}]
     if (Array.isArray(categoryCountsData)) {
       categoryCountsData.forEach((item: any) => {
         const id = String(item.kategori_id);

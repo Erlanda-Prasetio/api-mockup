@@ -1,10 +1,10 @@
 require('dotenv').config({ path: '.env.local' });
 const fetch = require('node-fetch');
-
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 async function testStatsApi() {
   try {
     // Make the stats request with basic auth
-    const statsUrl = `${process.env.API_INTAN}/pengaduans/count`;
+    const statsUrl = `${process.env.API_INTAN}/api/pengaduan/count`;
     console.log('Requesting URL:', statsUrl);
 
     const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
