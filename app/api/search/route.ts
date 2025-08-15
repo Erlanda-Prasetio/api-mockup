@@ -117,17 +117,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(errorResponse, { status: 422 });
     }
 
-    // Search for report by kode_aduan using official API
-    const apiUrl =  process.env.API_INTAN || process.env.API_USERNAME || process.env.API_PASSWORD + '/pengaduan/search';
+    // Build upstream URL
+    const apiBase = (process.env.API_INTAN || '').replace(/\/$/, '');
+    if (!apiBase) {
+      console.error('Missing API_INTAN env for upstream API');
+      return NextResponse.json({ error: 'Upstream API not configured' }, { status: 500 });
+    }
+
+    const apiUrl = `${apiBase}/pengaduan/search`;
+
+    // Choose auth header: Bearer token preferred, fallback to Basic auth
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (process.env.API_INTAN_TOKEN) {
+      headers['Authorization'] = `Bearer ${process.env.API_INTAN_TOKEN}`;
+    } else if (process.env.API_USERNAME && process.env.API_PASSWORD) {
+      const creds = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
+      headers['Authorization'] = `Basic ${creds}`;
+    }
+
     const response = await fetch(apiUrl, {
       method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.API_INTAN}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        kode_aduan: kodeAduan
-      }),
+      headers,
+      body: JSON.stringify({ kode_aduan: kodeAduan }),
     });
 
     if (!response.ok) {
@@ -140,16 +151,31 @@ export async function GET(request: NextRequest) {
       throw new Error(`API request failed with status ${response.status}`);
     }
 
-    const data = await response.json();
-    
-    if (!data) {
-      return NextResponse.json(
-        { message: 'Report not found' },
-        { status: 404 }
-      );
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+
+    if (response.ok) {
+      if (contentType.includes('application/json')) {
+        try {
+          const json = JSON.parse(text);
+          return NextResponse.json(json, { status: 200 });
+        } catch (err) {
+          console.error('Failed to parse JSON from upstream:', err);
+          return NextResponse.json({ error: 'Invalid JSON from upstream' }, { status: 502 });
+        }
+      }
+
+      // Upstream returned non-JSON (likely an auth/login HTML); forward a helpful error
+      console.error('Upstream returned non-JSON response for search');
+      return NextResponse.json({ error: 'Upstream returned non-JSON response', bodyPreview: text.slice(0, 800) }, { status: 502 });
     }
 
-    return NextResponse.json(data);
+    // Not OK
+    if (response.status === 404) {
+      return NextResponse.json({ message: 'Report not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ error: `Upstream error ${response.status}`, bodyPreview: text.slice(0, 800) }, { status: 502 });
 
   } catch (error) {
     console.error('Search API error:', error);

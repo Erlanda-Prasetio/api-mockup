@@ -9,18 +9,17 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { FileText, AlertTriangle, Shield, Search,  ArrowRight } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "sonner";
 
 
 export default function HomePage() {
+  const [trackingNumber, setTrackingNumber] = useState("")
+  const [isLoadingStats, setIsLoadingStats] = useState(true)
   const [stats, setStats] = useState({
     korupsi: 0,
     gratifikasi: 0,
     'benturan-kepentingan': 0,
   })
-
-  const [trackingNumber, setTrackingNumber] = useState("")
-  const [isLoadingStats, setIsLoadingStats] = useState(true)
 
   // Fetch real statistics from API
   useEffect(() => {
@@ -80,15 +79,13 @@ export default function HomePage() {
 
       if (response.ok && data.length > 0) {
         const report = data[0]
-        const statusMessages = {
-          1: "Aduan Sedang di proses",
-          2: "Aduan telah Selesai diproses",
-          3: "Aduan Ditunda sementara",
-        }
-        
-        const statusMessage = statusMessages[report.status_pengaduan_id as keyof typeof statusMessages] || "Status tidak diketahui"
-        toast.success(`Status Tiket ${trackingNumber}`, {
-          description: statusMessage,
+
+        // Prefer upstream status.name and status.description
+        const statusName = report?.status?.name || 'Menunggu'
+        const statusDesc = report?.status?.description || 'Menunggu Respon Kepala Dinas'
+
+        toast.success(`${statusName}`, {
+          description: statusDesc,
           action: {
             label: "OK",
             onClick: () => console.log("Status checked"),
@@ -148,6 +145,64 @@ export default function HomePage() {
       image: "/images/benturan-kepentingan.jpg",
     },
   ]
+
+  useEffect(() => {
+    const parseKodeFromUrl = (): string | null => {
+      try {
+        // First try the normal search params
+        const url = new URL(window.location.href);
+        let kode = url.searchParams.get("kode_aduan");
+        if (kode) return kode;
+
+        // If not found, the email uses a hash with query after it: "#tracking?kode_aduan=..."
+        const { hash } = window.location; // includes leading '#'
+        if (hash) {
+          const qIdx = hash.indexOf("?");
+          if (qIdx !== -1) {
+            const hashQuery = hash.slice(qIdx + 1);
+            const params = new URLSearchParams(hashQuery);
+            kode = params.get("kode_aduan");
+            if (kode) return kode;
+          }
+
+          // Also support cases like "#tracking/kode_aduan=..."
+          const slashIdx = hash.indexOf("/");
+          if (slashIdx !== -1) {
+            const afterSlash = hash.slice(slashIdx + 1);
+            const params = new URLSearchParams(afterSlash);
+            kode = params.get("kode_aduan");
+            if (kode) return kode;
+          }
+        }
+
+        return null;
+      } catch (err) {
+        console.error("Failed to parse kode_aduan from URL", err);
+        return null;
+      }
+    };
+
+    const kode = parseKodeFromUrl();
+    if (kode) {
+      setTrackingNumber(kode);
+
+      // scroll to section
+      const trackingSection = document.getElementById("tracking");
+      if (trackingSection) {
+        // delay slightly to ensure layout is ready
+        setTimeout(() => trackingSection.scrollIntoView({ behavior: "smooth" }), 50);
+      }
+
+      // focus and select the input inside the tracking section
+      setTimeout(() => {
+        const input = document.querySelector("#tracking input") as HTMLInputElement | null;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 300);
+    }
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -304,7 +359,7 @@ export default function HomePage() {
       </section>
 
       {/* Complaint Tracking Section */}
-      <section className="py-16 bg-teal-600">
+      <section id="tracking" className="py-16 bg-teal-600">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto text-center">
             <h3 className="text-4xl md:text-5xl font-bold text-white mb-4">Lacak Progress Pengaduan Anda</h3>

@@ -57,76 +57,59 @@
 //   }
 // }if (!process.env.API_INTAN || !process.env.API_USERNAME || !process.env.API_PASSWORD)
 import { NextRequest, NextResponse } from 'next/server';
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get category counts from the official API
-    const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
-    //const apiUrl = `${process.env.API_INTAN}/pengaduans/count`;
-    const apiUrl = `${process.env.API_INTAN}/pengaduan/count`;
-     console.log('Attempting to fetch this exact URL:', apiUrl);
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const baseRaw = process.env.API_INTAN || '';
+    const base = baseRaw.replace(/\/$/, ''); // trim trailing slash
 
-    if (!response.ok) {
-      // If the response is not OK, log the body as text to see the HTML
-      const errorBody = await response.text();
-      console.error('API did not return JSON. It returned this HTML page:');
-      console.error(errorBody);
-      
-      throw new Error(`API request failed with status ${response.status}`);
+    // determine auth header
+    let authHeader: Record<string, string> = {};
+    if (process.env.API_INTAN_TOKEN) {
+      authHeader = { Authorization: `Bearer ${process.env.API_INTAN_TOKEN}` };
+    } else if (process.env.API_USERNAME && process.env.API_PASSWORD) {
+      const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
+      authHeader = { Authorization: `Basic ${credentials}` };
     }
 
-    // This line will only be reached if response.ok is true
-    const categoryCountsData = await response.json();
-    
-    // Initialize stats with zero values 
-    const stats = {
-      korupsi: 0,
-      gratifikasi: 0,
-      'benturan-kepentingan': 0
-    };
+    // 1) fetch categories
+    const kategoriUrl = `${base}/kategori`;
+    const kategoriRes = await fetch(kategoriUrl, { method: 'GET', headers: { ...authHeader } });
+    if (!kategoriRes.ok) {
+      const body = await kategoriRes.text();
+      console.error('Failed to fetch categories:', kategoriRes.status, body);
+      throw new Error(`Failed to fetch categories: ${kategoriRes.status}`);
+    }
+    const kategoris = await kategoriRes.json();
 
-    //  with format: [{kategori_id, nama, jumlah_pengaduan}]
-    if (Array.isArray(categoryCountsData)) {
-      categoryCountsData.forEach((item: any) => {
-        const id = String(item.kategori_id);
-        const count = parseInt(item.jumlah_pengaduan, 10) || 0;
-        
-        if (id === '1' || item.nama.toLowerCase() === 'korupsi') {
-          stats.korupsi = count;
-        } else if (id === '2' || item.nama.toLowerCase() === 'gratifikasi') {
-          stats.gratifikasi = count;
-        } else if (id === '3' || item.nama.toLowerCase().includes('benturan')) {
-          stats['benturan-kepentingan'] = count;
+    // 2) for each category fetch count and build result
+    const results: Array<{ nama: string; jumlah_pengaduan: number }> = [];
+    for (const k of kategoris) {
+      const id = k.id;
+      const nama = k.nama || String(k.nama || id);
+      const countUrl = `${base}/pengaduan/count/${id}`;
+      try {
+        const res = await fetch(countUrl, { method: 'GET', headers: { ...authHeader } });
+        if (!res.ok) {
+          const txt = await res.text();
+          console.warn(`count for ${nama} returned ${res.status}: ${txt}`);
+          results.push({ nama, jumlah_pengaduan: 0 });
+          continue;
         }
-      });
+        const data = await res.json();
+        // data may be { kategori_id, jumlah_pengaduan }
+        const cnt = parseInt(String(data.jumlah_pengaduan || data.count || 0), 10) || 0;
+        results.push({ nama, jumlah_pengaduan: cnt });
+      } catch (err) {
+        console.error('Error fetching count for', nama, err);
+        results.push({ nama, jumlah_pengaduan: 0 });
+      }
     }
 
-    // Calculate total count
-    const total = stats.korupsi + stats.gratifikasi + stats['benturan-kepentingan'];
-
-    return NextResponse.json({
-      success: true,
-      data: categoryCountsData
-    });
-
+    return NextResponse.json({ success: true, data: results });
   } catch (error) {
     console.error('Stats API error:', error);
-    
-    return NextResponse.json(
-      {
-        success: false,
-        message: 'Failed to fetch statistics',
-        error: process.env.NODE_ENV === 'development' ? (error as Error).message : 'Something went wrong'
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, message: 'Failed to fetch statistics', error: process.env.NODE_ENV === 'development' ? (error as Error).message : 'Something went wrong' }, { status: 500 });
   }
 }

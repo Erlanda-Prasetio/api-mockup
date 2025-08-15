@@ -1,39 +1,56 @@
 require('dotenv').config({ path: '.env.local' });
 const fetch = require('node-fetch');
-process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 async function testStatsApi() {
   try {
-    // Make the stats request with basic auth
-    const statsUrl = `${process.env.API_INTAN}/api/pengaduan/count`;
-    console.log('Requesting URL:', statsUrl);
+    const token = process.env.API_INTAN_TOKEN;
 
-    const credentials = Buffer.from(`${process.env.API_USERNAME}:${process.env.API_PASSWORD}`).toString('base64');
-    const statsResponse = await fetch(statsUrl, {
+  // normalize base url (avoid double '/api' if API_INTAN contains '/api')
+  const base = process.env.API_INTAN.replace(/\/$/, '');
+
+  // 1) Fetch categories
+  const kategoriUrl = `${base}/kategori`;
+    console.log('Fetching categories:', kategoriUrl);
+    const kategoriRes = await fetch(kategoriUrl, {
       method: 'GET',
-      headers: {
-        'Authorization': `Basic ${credentials}`,
-        'Content-Type': 'application/json',
-      }
+      headers: { 'Authorization': `Bearer ${token}` }
     });
-
-    if (!statsResponse.ok) {
-      throw new Error(`Stats API request failed with status ${statsResponse.status}`);
+    if (!kategoriRes.ok) {
+      const t = await kategoriRes.text();
+      throw new Error(`Failed to fetch categories ${kategoriRes.status}: ${t}`);
     }
+    const kategoris = await kategoriRes.json();
+    console.log(`Found ${kategoris.length} categories`);
 
-    const statsData = await statsResponse.json();
-    console.log('Stats API Response:', JSON.stringify(statsData, null, 2));
+    // 2) For each category, fetch count
+    for (const k of kategoris) {
+      const id = k.id;
+  const countUrl = `${base}/pengaduan/count/${id}`;
+      try {
+        const res = await fetch(countUrl, {
+          method: 'GET',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const text = await res.text();
+        if (!res.ok) {
+          console.log(`Category ${id} (${k.nama}) -> status ${res.status} body: ${text}`);
+          continue;
+        }
+        const data = JSON.parse(text);
+        console.log(`Category ${id} (${k.nama}) -> ${JSON.stringify(data)}`);
+      } catch (err) {
+        console.error('Error fetching count for', id, err.message);
+      }
+    }
 
   } catch (error) {
     console.error('Test failed:', error.message);
-    if (error.response) {
-      const errorBody = await error.response.text();
-      console.error('Error response body:', errorBody);
-    }
   }
 }
 
 // Check if we have all required environment variables
-const requiredEnvVars = ['API_INTAN', 'API_USERNAME', 'API_PASSWORD'];
+const requiredEnvVars = ['API_INTAN', 'API_INTAN_TOKEN'];
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {

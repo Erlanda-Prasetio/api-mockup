@@ -418,12 +418,34 @@ export default function LaporanPage() {
       
       if (submitResponse.status === 200 && submitResult.message) {
         // Fill the generated kode_aduan back into our local form data object
-        dbFormData.kode_aduan = submitResult?.data?.kode_aduan
+        dbFormData.kode_aduan = submitResult?.data?.kode_aduan;
+        
         // Log success including generated kode_aduan
         console.log('Submit success:', {
           formData: dbFormData,
           generated_kode_aduan: submitResult?.data?.kode_aduan || '(no code returned)'
         });
+
+        // Send confirmation email
+        try {
+          const emailResponse = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to_email: formData.email,
+              kode_aduan: submitResult.data.kode_aduan
+            })
+          });
+
+          if (!emailResponse.ok) {
+            console.error('Failed to send email notification');
+          }
+        } catch (emailError) {
+          console.error('Error sending email:', emailError);
+        }
+
         toast.success("Laporan Anda Berhasil Di Kirim!", {
           description: `Silahkan Catat Kode Aduan Anda: ${submitResult.data.kode_aduan}`,
           action: {
@@ -528,6 +550,71 @@ export default function LaporanPage() {
           </Card>
 
           <form onSubmit={handleSubmit} className="space-y-8">
+
+             {/* Reporter Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Informasi Pelapor</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-8">
+                <div className="flex items-center space-x-3">
+                  <Checkbox
+                    id="anonim"
+                    checked={formData.anonim}
+                    onCheckedChange={(checked) => setFormData({ ...formData, anonim: checked as boolean })}
+                    className="h-5 w-5"
+                  />
+                  <Label htmlFor="anonim" className="text-base font-medium">
+                    Saya ingin melaporkan secara anonim
+                  </Label>
+                </div>
+
+                {!formData.anonim && (
+                  <div className="space-y-8">
+                    <div>
+                      <Label htmlFor="nama" className="text-base font-medium mb-3 block">Nama Lengkap *</Label>
+                      <Input
+                        id="nama"
+                        value={formData.nama}
+                        onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                        placeholder="Masukkan nama lengkap Anda"
+                        className="h-12"
+                        required={!formData.anonim}
+                      />
+                    </div>
+                   
+                    <div className="space-y-8">
+                      <div>
+                        <Label htmlFor="telepon" className="text-base font-medium mb-3 block">Nomor Telepon</Label>
+                        <Input
+                          id="telepon"
+                          value={formData.telepon}
+                          onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
+                          placeholder="08xxxxxxxxxx"
+                          className="h-12"
+                        />
+                      </div>
+                    </div>
+                     
+                  </div>
+                )}
+             
+                  <div className="mb-6">
+                    <Label htmlFor="email" className="text-base font-medium mb-3 mt-3 block">Email *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="Masukan Email Anda"
+                      className="h-12"
+                      required
+                    />
+                  </div>
+          
+              </CardContent>
+            </Card>
+
             {/* Report Details */}
             <Card>
               <CardHeader>
@@ -868,7 +955,7 @@ export default function LaporanPage() {
                       ))}
                     </div>
                   )}
-
+                  
                   {/* Validation Checkbox */}
                   <div className="mt-6 pt-6 border-t border-gray-200">
                     <div className="flex items-start space-x-3">
@@ -884,69 +971,11 @@ export default function LaporanPage() {
                     </div>
                   </div>
                 </div>
+                
               </CardContent>
             </Card>
 
-            {/* Reporter Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Informasi Pelapor</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-8">
-                <div className="flex items-center space-x-3">
-                  <Checkbox
-                    id="anonim"
-                    checked={formData.anonim}
-                    onCheckedChange={(checked) => setFormData({ ...formData, anonim: checked as boolean })}
-                    className="h-5 w-5"
-                  />
-                  <Label htmlFor="anonim" className="text-base font-medium">
-                    Saya ingin melaporkan secara anonim
-                  </Label>
-                </div>
-
-                {!formData.anonim && (
-                  <div className="space-y-8">
-                    <div>
-                      <Label htmlFor="nama" className="text-base font-medium mb-3 block">Nama Lengkap *</Label>
-                      <Input
-                        id="nama"
-                        value={formData.nama}
-                        onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
-                        placeholder="Masukkan nama lengkap Anda"
-                        className="h-12"
-                        required={!formData.anonim}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div>
-                        <Label htmlFor="email" className="text-base font-medium mb-3 block">Email *</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={formData.email}
-                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          placeholder="email@example.com"
-                          className="h-12"
-                          required={!formData.anonim}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="telepon" className="text-base font-medium mb-3 block">Nomor Telepon</Label>
-                        <Input
-                          id="telepon"
-                          value={formData.telepon}
-                          onChange={(e) => setFormData({ ...formData, telepon: e.target.value })}
-                          placeholder="08xxxxxxxxxx"
-                          className="h-12"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            
 
             {/* Submit Button */}
             <div className="flex justify-start">
