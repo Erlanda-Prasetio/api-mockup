@@ -81,7 +81,7 @@ export default function HomePage() {
         const report = data[0]
 
         // Prefer upstream status.name and status.description
-        const statusName = report?.status?.name || 'Menunggu'
+        const statusName = report?.status?.name || 'Sedang Di Proses'
         const statusDesc = report?.status?.description || 'Menunggu Respon Kepala Dinas'
 
         toast.success(`${statusName}`, {
