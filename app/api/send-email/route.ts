@@ -55,7 +55,7 @@ export async function POST(request: Request) {
                 </tr>
                 <tr>
                   <td align="center" style="padding: 20px 20px 20px 20px;">
-                    <a href="http://localhost:3000/#tracking?kode_aduan=${kode_aduan}" style="text-decoration: none; display: inline-block;">
+                    <a href="https://wbs-beta-six.vercel.app/#tracking?kode_aduan=${kode_aduan}" style="text-decoration: none; display: inline-block;">
                       <span style="display:inline-block; background-color: #009278; color: #ffffff; padding: 14px 28px; border-radius: 4px; font-size: 20px; font-weight: bold; letter-spacing: 2px; user-select: text; -webkit-user-select: text; -moz-user-select: text; -ms-user-select: text; -webkit-touch-callout: default;">
                         ${kode_aduan}
                       </span>
