@@ -1,5 +1,4 @@
-const API_BASE_URL = 'https://intan.dpmptsp.jatengprov.go.id/api';
-const API_TOKEN = '144|Vghi6vZ6H48YkuP6WgLZnzQNBX5fGYwavgKToaQE42c8c4c3';
+
 
 // Test 1: Get Categories
 async function testCategories() {

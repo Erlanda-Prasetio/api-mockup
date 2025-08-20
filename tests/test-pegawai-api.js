@@ -1,6 +1,4 @@
-const API_BASE_URL = 'https://intan.dpmptsp.jatengprov.go.id/api';
-const API_USERNAME = 'wbsdpmptsp@gmail.com';
-const API_PASSWORD = 'wbsDpmpt5p321@';
+
 
 async function testPegawaiAPI() {
   try {
