@@ -875,7 +875,7 @@ export default function LaporanPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="bukti[]">Lampiran Bukti (Opsional)</Label>
+                  <Label htmlFor="bukti[]">Lampiran Bukti (Wajib)</Label>
                   <p className="text-sm text-gray-500 mb-3">Satu atau lebih file bukti</p>
                   <div 
                     className={`relative mt-2 border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all duration-200 hover:bg-gray-50 ${
